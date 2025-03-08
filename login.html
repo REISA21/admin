@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GROK 3 - Login</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;500&display=swap');
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #1a1a3d);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        .login-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 400px;
+            padding: 30px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        .login-header {
+            color: #fff;
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .input-field {
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .input-field:focus {
+            border-color: #00aaff;
+            box-shadow: 0 0 10px rgba(0, 170, 255, 0.5);
+        }
+        .login-btn {
+            background: #00aaff;
+            color: #1a1a3d;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        .login-btn:hover {
+            background: #00ddaa;
+        }
+        .register-link {
+            color: #00aaff;
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .register-link:hover {
+            color: #00ddaa;
+        }
+        @media (max-width: 480px) {
+            .login-container {
+                width: 95%;
+                padding: 20px;
+            }
+            .login-header {
+                font-size: 20px;
+            }
+            .input-field {
+                font-size: 13px;
+                padding: 10px;
+            }
+            .login-btn {
+                font-size: 14px;
+                padding: 10px;
+            }
+            .register-link {
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">Login to GROK 3</div>
+        <div class="login-form">
+            <input type="text" class="input-field" id="username" placeholder="Username">
+            <input type="password" class="input-field" id="password" placeholder="Password">
+            <button class="login-btn" id="login-btn">Login</button>
+            <div class="register-link" id="register-link">Don't have an account? Register here</div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const loginBtn = document.getElementById('login-btn');
+            const registerLink = document.getElementById('register-link');
+
+            // Initialize users in localStorage if not exists
+            if (!localStorage.getItem('users')) {
+                localStorage.setItem('users', JSON.stringify([]));
+            }
+
+            loginBtn.addEventListener('click', () => {
+                const username = usernameInput.value.trim();
+                const password = passwordInput.value.trim();
+
+                if (username && password) {
+                    const users = JSON.parse(localStorage.getItem('users')) || [];
+                    const userExists = users.find(user => user.username === username && user.password === password);
+
+                    if (userExists) {
+                        localStorage.setItem('currentUser', username);
+                        alert('Login berhasil! Selamat datang, ' + username + '!');
+                        window.location.href = './index.html';
+                    } else {
+                        alert('Username atau password salah! Silakan coba lagi atau daftar jika belum memiliki akun.');
+                    }
+                } else {
+                    alert('Harap masukkan username dan password.');
+                }
+            });
+
+            registerLink.addEventListener('click', () => {
+                const username = prompt('Masukkan username baru:');
+                const password = prompt('Masukkan password baru:');
+
+                if (username && password) {
+                    const users = JSON.parse(localStorage.getItem('users')) || [];
+                    const userExists = users.find(user => user.username === username);
+
+                    if (userExists) {
+                        alert('Username sudah digunakan! Silakan pilih username lain.');
+                    } else {
+                        users.push({ username, password });
+                        localStorage.setItem('users', JSON.stringify(users));
+                        alert('Registrasi berhasil! Silakan login dengan akun Anda.');
+                    }
+                } else {
+                    alert('Harap masukkan username dan password untuk registrasi.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

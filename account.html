@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Management - GROK 3</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;700&display=swap');
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f0c29;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            color: #fff;
+        }
+        .account-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 90%;
+            max-width: 400px;
+            padding: 20px;
+            text-align: center;
+        }
+        .account-header {
+            background: linear-gradient(90deg, #6b2eb2, #00d4ff);
+            color: #fff;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        .account-info {
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .account-btn {
+            background: #00d4ff;
+            color: #0f0c29;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .account-btn:hover {
+            background: #00ffaa;
+        }
+        .logout-btn {
+            background: #ff5555;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .logout-btn:hover {
+            background: #ff7777;
+        }
+        @media (max-width: 480px) {
+            .account-container {
+                width: 95%;
+            }
+            .account-header {
+                font-size: 16px;
+            }
+            .account-info {
+                font-size: 13px;
+            }
+            .account-btn, .logout-btn {
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="account-container">
+        <div class="account-header">Account Management</div>
+        <div class="account-info" id="account-info">
+            <p id="login-message">Checking login status...</p>
+        </div>
+        <button class="account-btn" onclick="goToChat()">Back to Chat</button>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <script>
+        // Ambil elemen untuk menampilkan info akun
+        const accountInfo = document.getElementById('account-info');
+        const loginMessage = document.getElementById('login-message');
+
+        // Ambil user yang sedang login dari localStorage
+        const currentUser = localStorage.getItem('currentUser');
+
+        // Cek status login
+        if (!currentUser) {
+            loginMessage.innerHTML = 'Anda belum login. Silakan login terlebih dahulu.';
+            // Tambahkan tautan langsung ke login.html
+            const loginLink = document.createElement('p');
+            loginLink.innerHTML = '<a href="./login.html" style="color: #00d4ff;">Kembali ke Login</a>';
+            accountInfo.appendChild(loginLink);
+            // Nonaktifkan tombol Back to Chat dan Logout
+            document.querySelector('.account-btn').disabled = true;
+            document.querySelector('.logout-btn').disabled = true;
+        } else {
+            loginMessage.innerHTML = `Logged in as: <strong>${currentUser}</strong>`;
+        }
+
+        // Fungsi untuk kembali ke halaman chat (index.html)
+        function goToChat() {
+            window.location.href = './index.html';
+        }
+
+        // Fungsi untuk logout
+        function logout() {
+            if (confirm('Apakah Anda yakin ingin logout?')) {
+                localStorage.removeItem('currentUser');
+                alert('Logout berhasil!');
+                window.location.href = './login.html';
+            }
+        }
+    </script>
+</body>
+</html>

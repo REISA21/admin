@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GROK 3 - Admin Panel</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;500&display=swap');
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #1a1a3d);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        .admin-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 500px;
+            height: 90vh;
+            max-height: 800px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        .admin-header {
+            background: linear-gradient(90deg, #2e1a4d, #00aaff);
+            color: #fff;
+            padding: 15px;
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            border-top-left-radius: 15px;
+            border-top-right-radius: 15px;
+            position: relative;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        .admin-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.03);
+            scrollbar-width: thin;
+            scrollbar-color: #00aaff transparent;
+        }
+        .admin-body::-webkit-scrollbar {
+            width: 8px;
+        }
+        .admin-body::-webkit-scrollbar-thumb {
+            background: #00aaff;
+            border-radius: 5px;
+        }
+        .admin-body::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .user-session, .user-credentials {
+            padding: 12px;
+            margin: 10px 0;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            transition: background 0.3s;
+        }
+        .user-session:hover, .user-credentials:hover {
+            background: rgba(0, 212, 255, 0.2);
+        }
+        .message {
+            margin: 15px 0;
+            padding: 12px 18px;
+            border-radius: 12px;
+            max-width: 75%;
+            animation: slideIn 0.4s ease-out;
+            font-size: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .admin-message {
+            background: linear-gradient(135deg, #00aaff, #00ddaa);
+            color: #fff;
+            align-self: flex-end;
+            border-right: 4px solid #00ddaa;
+            border-left: none;
+            border-top: none;
+            border-bottom: none;
+        }
+        .user-message {
+            background: linear-gradient(135deg, #3c1a6b, #6a2eb2);
+            color: #fff;
+            align-self: flex-start;
+            position: relative;
+            border-left: 4px solid #00aaff;
+            border-right: none;
+            border-top: none;
+            border-bottom: none;
+        }
+        .user-message::before {
+            content: '👤';
+            margin-right: 5px;
+        }
+        .notification {
+            background: #ff4444;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            animation: blink 1s infinite;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(15px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+        .admin-input-container {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(0, 212, 255, 0.2);
+        }
+        .admin-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .input-area {
+            flex: 1;
+            padding: 12px 18px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .input-area:focus {
+            border-color: #00aaff;
+            box-shadow: 0 0 10px rgba(0, 170, 255, 0.5);
+        }
+        .send-btn {
+            background: #00aaff;
+            color: #1a1a3d;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .send-btn:hover {
+            background: #00ddaa;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(0, 255, 170, 0.7);
+        }
+        .quick-reply-btn {
+            background: #00ddaa;
+            color: #1a1a3d;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        .quick-reply-btn:hover {
+            background: #00aaff;
+        }
+        .back-btn {
+            background: #ff4444;
+            color: #fff;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+            margin-bottom: 10px;
+        }
+        .back-btn:hover {
+            background: #ff6666;
+        }
+        .logout-btn {
+            background: #ff5555;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .logout-btn:hover {
+            background: #ff7777;
+        }
+        @media (max-width: 480px) {
+            .admin-container {
+                width: 95%;
+                height: 95vh;
+                max-height: none;
+            }
+            .admin-header {
+                font-size: 18px;
+            }
+            .message {
+                font-size: 13px;
+                max-width: 85%;
+                padding: 10px 15px;
+            }
+            .input-area {
+                font-size: 13px;
+                padding: 10px 15px;
+            }
+            .send-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+        }
+        @media (min-width: 481px) and (max-width: 768px) {
+            .admin-container {
+                max-width: 550px;
+            }
+            .admin-header {
+                font-size: 20px;
+            }
+            .message {
+                font-size: 14px;
+            }
+        }
+        @media (min-width: 769px) {
+            .admin-container {
+                max-width: 600px;
+            }
+            .admin-header {
+                font-size: 22px;
+            }
+            .message {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">GROK 3 - Admin Panel</div>
+        <div class="admin-body" id="admin-body"></div>
+        <div class="admin-input-container" id="admin-input-container">
+            <div class="admin-input">
+                <input type="text" class="input-area" id="admin-input" placeholder="Type your response...">
+                <button class="send-btn" id="admin-send-btn">➤</button>
+            </div>
+            <button class="quick-reply-btn" id="quick-install-btn">Cara Instal Aplikasi</button>
+            <button class="quick-reply-btn" id="quick-excel-btn">Rumus Excel Dasar</button>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <script>
+        // Pastikan DOM sudah dimuat sebelum menjalankan script
+        document.addEventListener('DOMContentLoaded', () => {
+            const adminBody = document.getElementById('admin-body');
+            const adminInput = document.getElementById('admin-input');
+            const adminSendBtn = document.getElementById('admin-send-btn');
+            const adminInputContainer = document.getElementById('admin-input-container');
+            const quickInstallBtn = document.getElementById('quick-install-btn');
+            const quickExcelBtn = document.getElementById('quick-excel-btn');
+
+            // Default admin credentials
+            const defaultAdmin = {
+                username: 'admin',
+                password: 'admin123'
+            };
+
+            // Load or set admin credentials in localStorage
+            if (!localStorage.getItem('admin')) {
+                localStorage.setItem('admin', JSON.stringify(defaultAdmin));
+            }
+
+            // Login check
+            function checkLogin() {
+                const loggedInAdmin = localStorage.getItem('loggedInAdmin');
+                if (!loggedInAdmin) {
+                    adminBody.innerHTML = '<h3>Admin Login Required</h3><p>Harap login sebagai admin untuk mengakses halaman ini.</p>';
+                    adminInputContainer.style.display = 'none';
+
+                    const loginLink = document.createElement('p');
+                    loginLink.innerHTML = '<a href="./login.html" style="color: #00d4ff;">Kembali ke Login</a>';
+                    adminBody.appendChild(loginLink);
+
+                    const adminLoginBtn = document.createElement('button');
+                    adminLoginBtn.classList.add('back-btn');
+                    adminLoginBtn.textContent = 'Login sebagai Admin';
+                    adminLoginBtn.addEventListener('click', () => {
+                        const username = prompt('Enter admin username:');
+                        const password = prompt('Enter admin password:');
+                        const admin = JSON.parse(localStorage.getItem('admin'));
+
+                        if (username === admin.username && password === admin.password) {
+                            localStorage.setItem('loggedInAdmin', JSON.stringify({ username: admin.username }));
+                            alert('Admin login berhasil!');
+                            showUserSessions();
+                            adminInputContainer.style.display = 'none';
+                        } else {
+                            alert('Username atau password salah!');
+                        }
+                    });
+                    adminBody.appendChild(adminLoginBtn);
+                    return false;
+                }
+                return true;
+            }
+
+            let currentSessionId = null;
+
+            // Function to add message
+            function addMessage(text, isAdmin = true) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message', isAdmin ? 'admin-message' : 'user-message');
+                messageDiv.appendChild(document.createTextNode(text));
+                adminBody.appendChild(messageDiv);
+                adminBody.scrollTop = adminBody.scrollHeight;
+
+                // Update messages in localStorage for the current session
+                if (currentSessionId) {
+                    const messages = JSON.parse(localStorage.getItem(`messages_${currentSessionId}`)) || [];
+                    messages.push({ text, isBot: isAdmin, timestamp: new Date().toLocaleTimeString() });
+                    localStorage.setItem(`messages_${currentSessionId}`, JSON.stringify(messages));
+                }
+            }
+
+            // Function to send admin response
+            function sendAdminResponse(message) {
+                if (message && currentSessionId) {
+                    addMessage(`Admin: ${message}`);
+                    notifyUserActivity(`Admin responded to session ${currentSessionId}: ${message}`);
+                }
+            }
+
+            // Event listener for send button
+            adminSendBtn.addEventListener('click', () => {
+                const message = adminInput.value.trim();
+                sendAdminResponse(message);
+                adminInput.value = '';
+            });
+
+            // Event listener for Enter key
+            adminInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && adminInput.value.trim() && currentSessionId) {
+                    sendAdminResponse(adminInput.value.trim());
+                    adminInput.value = '';
+                }
+            });
+
+            // Quick reply for installing apps
+            quickInstallBtn.addEventListener('click', () => {
+                const message = 'Cara Instal Aplikasi:\n1. Buka browser.\n2. Ketik alamat situs aplikasi.\n3. Klik tombol "Download" atau "Install".\n4. Ikuti langkah-langkah di layar.';
+                sendAdminResponse(message);
+            });
+
+            // Quick reply for Excel formulas
+            quickExcelBtn.addEventListener('click', () => {
+                const message = 'Rumus Excel Dasar:\n- Jumlah: =SUM(A1:A10)\n- Rata-rata: =AVERAGE(A1:A10)\n- Total: =SUM(A1+B1)';
+                sendAdminResponse(message);
+            });
+
+            // Function to notify admin of user activity
+            function notifyUserActivity(message) {
+                if ('Notification' in window) {
+                    if (Notification.permission === 'granted') {
+                        new Notification('New Activity', { body: message });
+                    } else if (Notification.permission !== 'denied') {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === 'granted') {
+                                new Notification('New Activity', { body: message });
+                            }
+                        });
+                    }
+                }
+                const notificationDiv = document.createElement('div');
+                notificationDiv.classList.add('notification');
+                notificationDiv.textContent = message;
+                adminBody.appendChild(notificationDiv);
+                adminBody.scrollTop = adminBody.scrollHeight;
+            }
+
+            // Function to show user credentials
+            function showUserCredentials() {
+                adminBody.innerHTML = '<h3>User Credentials</h3>';
+                adminInputContainer.style.display = 'none';
+
+                // Show admin credentials
+                const admin = JSON.parse(localStorage.getItem('admin')) || {};
+                const adminCredentialsDiv = document.createElement('div');
+                adminCredentialsDiv.classList.add('user-credentials');
+                adminCredentialsDiv.innerHTML = `<p>Admin - Username: ${admin.username} | Password: ${admin.password}</p>`;
+                adminBody.appendChild(adminCredentialsDiv);
+
+                // Show user credentials
+                const users = JSON.parse(localStorage.getItem('users')) || [];
+                if (users.length === 0) {
+                    adminBody.innerHTML += '<p>No registered users.</p>';
+                } else {
+                    users.forEach(user => {
+                        const userCredentialsDiv = document.createElement('div');
+                        userCredentialsDiv.classList.add('user-credentials');
+                        userCredentialsDiv.innerHTML = `<p>User - Username: ${user.username} | Password: ${user.password}</p>`;
+                        adminBody.appendChild(userCredentialsDiv);
+                    });
+                }
+
+                const backBtn = document.createElement('button');
+                backBtn.classList.add('back-btn');
+                backBtn.textContent = 'Back to Sessions';
+                backBtn.addEventListener('click', showUserSessions);
+                adminBody.appendChild(backBtn);
+            }
+
+            // Function to show user sessions
+            function showUserSessions() {
+                adminBody.innerHTML = '<h3>User Sessions</h3>';
+                adminInputContainer.style.display = 'none';
+
+                const sessions = JSON.parse(localStorage.getItem('sessions')) || [];
+                if (sessions.length === 0) {
+                    adminBody.innerHTML += '<p>No active user sessions.</p>';
+                } else {
+                    sessions.forEach(session => {
+                        const sessionDiv = document.createElement('div');
+                        sessionDiv.classList.add('user-session');
+                        sessionDiv.innerHTML = `<p>User: ${session.userId} | Last Message: ${session.preview} | Time: ${session.timestamp}</p>`;
+                        sessionDiv.addEventListener('click', () => loadSessionMessages(session.sessionId));
+                        adminBody.appendChild(sessionDiv);
+                    });
+                }
+
+                const credentialsBtn = document.createElement('div');
+                credentialsBtn.classList.add('user-credentials');
+                credentialsBtn.textContent = 'View User Credentials';
+                credentialsBtn.addEventListener('click', showUserCredentials);
+                adminBody.appendChild(credentialsBtn);
+            }
+
+            // Function to load messages from a session
+            function loadSessionMessages(sessionId) {
+                currentSessionId = sessionId;
+                adminBody.innerHTML = '';
+                adminInputContainer.style.display = 'flex';
+
+                const messages = JSON.parse(localStorage.getItem(`messages_${sessionId}`)) || [];
+                messages.forEach(msg => {
+                    addMessage(msg.text, msg.isBot);
+                });
+
+                const backBtn = document.createElement('button');
+                backBtn.classList.add('back-btn');
+                backBtn.textContent = 'Back to Sessions';
+                backBtn.addEventListener('click', showUserSessions);
+                adminBody.insertBefore(backBtn, adminBody.firstChild);
+            }
+
+            // Simulate checking for user activity (polling)
+            let lastMessageCount = 0;
+            function checkUserActivity() {
+                const sessions = JSON.parse(localStorage.getItem('sessions')) || [];
+                let totalMessages = 0;
+                sessions.forEach(session => {
+                    const messages = JSON.parse(localStorage.getItem(`messages_${session.sessionId}`)) || [];
+                    totalMessages += messages.length;
+                    const latestMessage = messages[messages.length - 1];
+                    if (latestMessage && !latestMessage.isBot) {
+                        notifyUserActivity(`New message from ${session.userId} in session ${session.sessionId}: ${latestMessage.text}`);
+                    }
+                });
+                if (totalMessages > lastMessageCount) {
+                    lastMessageCount = totalMessages;
+                    if (!currentSessionId) {
+                        showUserSessions();
+                    }
+                }
+            }
+
+            // Function to logout
+            function logout() {
+                if (confirm('Apakah Anda yakin ingin logout sebagai admin?')) {
+                    localStorage.removeItem('loggedInAdmin');
+                    alert('Logout berhasil!');
+                    window.location.href = './login.html';
+                }
+            }
+
+            // Check for activity every 5 seconds
+            setInterval(checkUserActivity, 5000);
+
+            // Initial check for login status
+            if (checkLogin()) {
+                showUserSessions();
+            }
+        });
+    </script>
+</body>
+</html>
