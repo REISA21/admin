@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Account Management - GROK 3</title>
+    <title>GROK 3 - Account</title>
+    <!-- Tambahkan Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;500&display=swap');
         * {
             margin: 0;
             padding: 0;
@@ -13,127 +17,148 @@
         }
         body {
             font-family: 'Inter', sans-serif;
-            background: #0f0c29;
-            height: 100vh;
+            background: linear-gradient(135deg, #0f0c29, #1a1a3d);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 10px;
-            color: #fff;
+            position: relative;
+            overflow: auto;
         }
         .account-container {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             width: 90%;
             max-width: 400px;
-            padding: 20px;
-            text-align: center;
+            padding: 30px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
         }
         .account-header {
-            background: linear-gradient(90deg, #6b2eb2, #00d4ff);
             color: #fff;
-            padding: 15px;
-            font-size: 18px;
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
             font-weight: 700;
-            border-radius: 15px;
             margin-bottom: 20px;
         }
         .account-info {
+            color: #fff;
+            font-size: 16px;
             margin-bottom: 20px;
-            font-size: 14px;
+            text-align: center;
         }
-        .account-btn {
-            background: #00d4ff;
-            color: #0f0c29;
-            border: none;
-            padding: 10px;
-            border-radius: 10px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 14px;
-            margin: 10px 0;
+        .account-info span {
+            color: #00aaff;
+            font-weight: 500;
         }
-        .account-btn:hover {
-            background: #00ffaa;
-        }
-        .logout-btn {
+        .logout-btn, .back-btn, .admin-btn {
             background: #ff5555;
             color: #fff;
             border: none;
-            padding: 10px;
+            padding: 12px;
             border-radius: 10px;
             cursor: pointer;
-            width: 100%;
-            font-size: 14px;
+            font-size: 16px;
+            font-weight: 500;
             margin: 10px 0;
+            transition: background 0.3s;
         }
-        .logout-btn:hover {
+        .logout-btn:hover, .back-btn:hover, .admin-btn:hover {
             background: #ff7777;
         }
+        .admin-btn {
+            background: #00aaff;
+        }
+        .admin-btn:hover {
+            background: #00ddaa;
+        }
         @media (max-width: 480px) {
+            body {
+                align-items: flex-start;
+                padding: 10px;
+            }
             .account-container {
-                width: 95%;
+                width: 100%;
+                padding: 20px;
+                border-radius: 0;
             }
             .account-header {
-                font-size: 16px;
+                font-size: 20px;
             }
             .account-info {
-                font-size: 13px;
+                font-size: 14px;
             }
-            .account-btn, .logout-btn {
-                font-size: 13px;
+            .logout-btn, .back-btn, .admin-btn {
+                font-size: 14px;
+                padding: 10px;
             }
         }
     </style>
 </head>
 <body>
     <div class="account-container">
-        <div class="account-header">Account Management</div>
-        <div class="account-info" id="account-info">
-            <p id="login-message">Checking login status...</p>
-        </div>
-        <button class="account-btn" onclick="goToChat()">Back to Chat</button>
-        <button class="logout-btn" onclick="logout()">Logout</button>
+        <div class="account-header">Account Details</div>
+        <div class="account-info" id="account-info"></div>
+        <button class="back-btn" id="back-btn">Back to Chat</button>
+        <button class="admin-btn" id="admin-btn">Go to Admin</button>
+        <button class="logout-btn" id="logout-btn">Logout</button>
     </div>
 
     <script>
-        // Ambil elemen untuk menampilkan info akun
-        const accountInfo = document.getElementById('account-info');
-        const loginMessage = document.getElementById('login-message');
+        // Inisialisasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAM1C8pqm9ex_pyrc4p9lOP3Hv3eRSxsqU",
+            authDomain: "grok3-kantor.firebaseapp.com",
+            projectId: "grok3-kantor",
+            storageBucket: "grok3-kantor.firebasestorage.app",
+            messagingSenderId: "879928804738",
+            appId: "1:879928804738:web:865a34b69859741c3bbb9b",
+            measurementId: "G-9486SBC87P"
+        };
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
 
-        // Ambil user yang sedang login dari localStorage
-        const currentUser = localStorage.getItem('currentUser');
+        document.addEventListener('DOMContentLoaded', async () => {
+            const accountInfo = document.getElementById('account-info');
+            const logoutBtn = document.getElementById('logout-btn');
+            const backBtn = document.getElementById('back-btn');
+            const adminBtn = document.getElementById('admin-btn');
 
-        // Cek status login
-        if (!currentUser) {
-            loginMessage.innerHTML = 'Anda belum login. Silakan login terlebih dahulu.';
-            // Tambahkan tautan langsung ke login.html
-            const loginLink = document.createElement('p');
-            loginLink.innerHTML = '<a href="./login.html" style="color: #00d4ff;">Kembali ke Login</a>';
-            accountInfo.appendChild(loginLink);
-            // Nonaktifkan tombol Back to Chat dan Logout
-            document.querySelector('.account-btn').disabled = true;
-            document.querySelector('.logout-btn').disabled = true;
-        } else {
-            loginMessage.innerHTML = `Logged in as: <strong>${currentUser}</strong>`;
-        }
+            const currentUser = localStorage.getItem('currentUser');
 
-        // Fungsi untuk kembali ke halaman chat (index.html)
-        function goToChat() {
-            window.location.href = './index.html';
-        }
+            // Cek autentikasi user
+            auth.onAuthStateChanged(user => {
+                if (!user || !currentUser) {
+                    window.location.href = './login.html';
+                }
+            });
 
-        // Fungsi untuk logout
-        function logout() {
-            if (confirm('Apakah Anda yakin ingin logout?')) {
-                localStorage.removeItem('currentUser');
-                alert('Logout berhasil!');
-                window.location.href = './login.html';
+            const userRef = db.collection('users').doc(currentUser);
+            const doc = await userRef.get();
+            if (doc.exists) {
+                accountInfo.innerHTML = `Username: <span>${currentUser}</span>`;
+            } else {
+                accountInfo.innerHTML = 'User not found.';
             }
-        }
+
+            logoutBtn.addEventListener('click', async () => {
+                await auth.signOut();
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem(`currentSession_${currentUser}`);
+                window.location.href = './login.html';
+            });
+
+            backBtn.addEventListener('click', () => {
+                window.location.href = './index.html';
+            });
+
+            adminBtn.addEventListener('click', () => {
+                window.location.href = './admin.html';
+            });
+        });
     </script>
 </body>
 </html>
