@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GROK 3 - Admin Panel</title>
+    <!-- Tambahkan Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;500&display=swap');
         * {
@@ -14,8 +18,8 @@
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #0f0c29, #1a1a3d);
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh;
+            overflow: auto;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -213,18 +217,38 @@
             background: #ff7777;
         }
         @media (max-width: 480px) {
+            body {
+                align-items: flex-start;
+                padding: 10px;
+            }
             .admin-container {
-                width: 95%;
-                height: 95vh;
+                width: 100%;
+                height: auto;
+                min-height: 100vh;
                 max-height: none;
+                border-radius: 0;
             }
             .admin-header {
                 font-size: 18px;
+                padding: 10px;
+            }
+            .admin-body {
+                padding: 10px;
             }
             .message {
                 font-size: 13px;
                 max-width: 85%;
                 padding: 10px 15px;
+            }
+            .user-session, .user-credentials {
+                font-size: 12px;
+                padding: 8px;
+            }
+            .admin-input-container {
+                padding: 10px;
+                position: sticky;
+                bottom: 0;
+                width: 100%;
             }
             .input-area {
                 font-size: 13px;
@@ -235,10 +259,20 @@
                 height: 30px;
                 font-size: 14px;
             }
+            .quick-reply-btn, .logout-btn {
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+            .back-btn {
+                font-size: 12px;
+                padding: 6px 12px;
+            }
         }
         @media (min-width: 481px) and (max-width: 768px) {
             .admin-container {
                 max-width: 550px;
+                height: auto;
+                min-height: 100vh;
             }
             .admin-header {
                 font-size: 20px;
@@ -264,183 +298,87 @@
     <div class="admin-container">
         <div class="admin-header">GROK 3 - Admin Panel</div>
         <div class="admin-body" id="admin-body"></div>
-        <div class="admin-input-container" id="admin-input-container">
+        <div class="admin-input-container" id="admin-input-container" style="display: none;">
+            <button class="back-btn" id="back-btn">Back</button>
             <div class="admin-input">
-                <input type="text" class="input-area" id="admin-input" placeholder="Type your response...">
-                <button class="send-btn" id="admin-send-btn">➤</button>
+                <input type="text" class="input-area" id="input-area" placeholder="Type response...">
+                <button class="send-btn" id="send-btn">➤</button>
             </div>
-            <button class="quick-reply-btn" id="quick-install-btn">Cara Instal Aplikasi</button>
-            <button class="quick-reply-btn" id="quick-excel-btn">Rumus Excel Dasar</button>
-            <button class="logout-btn" onclick="logout()">Logout</button>
+            <button class="quick-reply-btn" id="quick-reply-btn">Send Quick Reply</button>
         </div>
+        <button class="logout-btn" id="logout-btn" style="display: none;">Logout</button>
     </div>
 
     <script>
-        // Pastikan DOM sudah dimuat sebelum menjalankan script
-        document.addEventListener('DOMContentLoaded', () => {
+        // Inisialisasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAM1C8pqm9ex_pyrc4p9lOP3Hv3eRSxsqU",
+            authDomain: "grok3-kantor.firebaseapp.com",
+            projectId: "grok3-kantor",
+            storageBucket: "grok3-kantor.firebasestorage.app",
+            messagingSenderId: "879928804738",
+            appId: "1:879928804738:web:865a34b69859741c3bbb9b",
+            measurementId: "G-9486SBC87P"
+        };
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        document.addEventListener('DOMContentLoaded', async () => {
             const adminBody = document.getElementById('admin-body');
-            const adminInput = document.getElementById('admin-input');
-            const adminSendBtn = document.getElementById('admin-send-btn');
+            const inputArea = document.getElementById('input-area');
+            const sendBtn = document.getElementById('send-btn');
+            const quickReplyBtn = document.getElementById('quick-reply-btn');
             const adminInputContainer = document.getElementById('admin-input-container');
-            const quickInstallBtn = document.getElementById('quick-install-btn');
-            const quickExcelBtn = document.getElementById('quick-excel-btn');
+            const backBtn = document.getElementById('back-btn');
+            const logoutBtn = document.getElementById('logout-btn');
 
-            // Default admin credentials
-            const defaultAdmin = {
-                username: 'admin',
-                password: 'admin123'
-            };
-
-            // Load or set admin credentials in localStorage
-            if (!localStorage.getItem('admin')) {
-                localStorage.setItem('admin', JSON.stringify(defaultAdmin));
-            }
-
-            // Login check
-            function checkLogin() {
-                const loggedInAdmin = localStorage.getItem('loggedInAdmin');
-                if (!loggedInAdmin) {
-                    adminBody.innerHTML = '<h3>Admin Login Required</h3><p>Harap login sebagai admin untuk mengakses halaman ini.</p>';
-                    adminInputContainer.style.display = 'none';
-
-                    const loginLink = document.createElement('p');
-                    loginLink.innerHTML = '<a href="./login.html" style="color: #00d4ff;">Kembali ke Login</a>';
-                    adminBody.appendChild(loginLink);
-
-                    const adminLoginBtn = document.createElement('button');
-                    adminLoginBtn.classList.add('back-btn');
-                    adminLoginBtn.textContent = 'Login sebagai Admin';
-                    adminLoginBtn.addEventListener('click', () => {
-                        const username = prompt('Enter admin username:');
-                        const password = prompt('Enter admin password:');
-                        const admin = JSON.parse(localStorage.getItem('admin'));
-
-                        if (username === admin.username && password === admin.password) {
-                            localStorage.setItem('loggedInAdmin', JSON.stringify({ username: admin.username }));
-                            alert('Admin login berhasil!');
-                            showUserSessions();
-                            adminInputContainer.style.display = 'none';
-                        } else {
-                            alert('Username atau password salah!');
-                        }
-                    });
-                    adminBody.appendChild(adminLoginBtn);
-                    return false;
-                }
-                return true;
-            }
-
+            const defaultAdmin = { username: 'admin', password: 'admin123' };
             let currentSessionId = null;
+            let messages = [];
 
-            // Function to add message
-            function addMessage(text, isAdmin = true) {
-                const messageDiv = document.createElement('div');
-                messageDiv.classList.add('message', isAdmin ? 'admin-message' : 'user-message');
-                messageDiv.appendChild(document.createTextNode(text));
-                adminBody.appendChild(messageDiv);
-                adminBody.scrollTop = adminBody.scrollHeight;
-
-                // Update messages in localStorage for the current session
-                if (currentSessionId) {
-                    const messages = JSON.parse(localStorage.getItem(`messages_${currentSessionId}`)) || [];
-                    messages.push({ text, isBot: isAdmin, timestamp: new Date().toLocaleTimeString() });
-                    localStorage.setItem(`messages_${currentSessionId}`, JSON.stringify(messages));
-                }
-            }
-
-            // Function to send admin response
-            function sendAdminResponse(message) {
-                if (message && currentSessionId) {
-                    addMessage(`Admin: ${message}`);
-                    notifyUserActivity(`Admin responded to session ${currentSessionId}: ${message}`);
-                }
-            }
-
-            // Event listener for send button
-            adminSendBtn.addEventListener('click', () => {
-                const message = adminInput.value.trim();
-                sendAdminResponse(message);
-                adminInput.value = '';
-            });
-
-            // Event listener for Enter key
-            adminInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && adminInput.value.trim() && currentSessionId) {
-                    sendAdminResponse(adminInput.value.trim());
-                    adminInput.value = '';
-                }
-            });
-
-            // Quick reply for installing apps
-            quickInstallBtn.addEventListener('click', () => {
-                const message = 'Cara Instal Aplikasi:\n1. Buka browser.\n2. Ketik alamat situs aplikasi.\n3. Klik tombol "Download" atau "Install".\n4. Ikuti langkah-langkah di layar.';
-                sendAdminResponse(message);
-            });
-
-            // Quick reply for Excel formulas
-            quickExcelBtn.addEventListener('click', () => {
-                const message = 'Rumus Excel Dasar:\n- Jumlah: =SUM(A1:A10)\n- Rata-rata: =AVERAGE(A1:A10)\n- Total: =SUM(A1+B1)';
-                sendAdminResponse(message);
-            });
-
-            // Function to notify admin of user activity
-            function notifyUserActivity(message) {
-                if ('Notification' in window) {
-                    if (Notification.permission === 'granted') {
-                        new Notification('New Activity', { body: message });
-                    } else if (Notification.permission !== 'denied') {
-                        Notification.requestPermission().then(permission => {
-                            if (permission === 'granted') {
-                                new Notification('New Activity', { body: message });
-                            }
-                        });
+            const loggedInAdmin = localStorage.getItem('loggedInAdmin');
+            if (!loggedInAdmin) {
+                adminBody.innerHTML = '<h3>Admin Login Required</h3><p>Please login to access the admin panel.</p>';
+                const loginBtn = document.createElement('button');
+                loginBtn.classList.add('quick-reply-btn');
+                loginBtn.textContent = 'Login sebagai Admin';
+                loginBtn.addEventListener('click', async () => {
+                    const username = prompt('Masukkan username admin:');
+                    const password = prompt('Masukkan password admin:');
+                    if (username === defaultAdmin.username && password === defaultAdmin.password) {
+                        try {
+                            const email = `${username}@grok3.com`;
+                            await auth.signInWithEmailAndPassword(email, password);
+                            localStorage.setItem('loggedInAdmin', 'true');
+                            window.location.reload();
+                        } catch (error) {
+                            alert('Username atau password admin salah!');
+                        }
+                    } else {
+                        alert('Username atau password admin salah!');
                     }
-                }
-                const notificationDiv = document.createElement('div');
-                notificationDiv.classList.add('notification');
-                notificationDiv.textContent = message;
-                adminBody.appendChild(notificationDiv);
-                adminBody.scrollTop = adminBody.scrollHeight;
+                });
+                adminBody.appendChild(loginBtn);
+                return;
             }
 
-            // Function to show user credentials
-            function showUserCredentials() {
-                adminBody.innerHTML = '<h3>User Credentials</h3>';
-                adminInputContainer.style.display = 'none';
-
-                // Show admin credentials
-                const admin = JSON.parse(localStorage.getItem('admin')) || {};
-                const adminCredentialsDiv = document.createElement('div');
-                adminCredentialsDiv.classList.add('user-credentials');
-                adminCredentialsDiv.innerHTML = `<p>Admin - Username: ${admin.username} | Password: ${admin.password}</p>`;
-                adminBody.appendChild(adminCredentialsDiv);
-
-                // Show user credentials
-                const users = JSON.parse(localStorage.getItem('users')) || [];
-                if (users.length === 0) {
-                    adminBody.innerHTML += '<p>No registered users.</p>';
-                } else {
-                    users.forEach(user => {
-                        const userCredentialsDiv = document.createElement('div');
-                        userCredentialsDiv.classList.add('user-credentials');
-                        userCredentialsDiv.innerHTML = `<p>User - Username: ${user.username} | Password: ${user.password}</p>`;
-                        adminBody.appendChild(userCredentialsDiv);
-                    });
+            // Cek autentikasi admin
+            auth.onAuthStateChanged(user => {
+                if (!user || !loggedInAdmin) {
+                    localStorage.removeItem('loggedInAdmin');
+                    window.location.reload();
                 }
+            });
 
-                const backBtn = document.createElement('button');
-                backBtn.classList.add('back-btn');
-                backBtn.textContent = 'Back to Sessions';
-                backBtn.addEventListener('click', showUserSessions);
-                adminBody.appendChild(backBtn);
-            }
-
-            // Function to show user sessions
-            function showUserSessions() {
+            async function loadSessions() {
                 adminBody.innerHTML = '<h3>User Sessions</h3>';
-                adminInputContainer.style.display = 'none';
-
-                const sessions = JSON.parse(localStorage.getItem('sessions')) || [];
+                const sessionsRef = db.collection('sessions');
+                const snapshot = await sessionsRef.get();
+                const sessions = [];
+                snapshot.forEach(doc => {
+                    sessions.push(doc.data());
+                });
                 if (sessions.length === 0) {
                     adminBody.innerHTML += '<p>No active user sessions.</p>';
                 } else {
@@ -448,72 +386,93 @@
                         const sessionDiv = document.createElement('div');
                         sessionDiv.classList.add('user-session');
                         sessionDiv.innerHTML = `<p>User: ${session.userId} | Last Message: ${session.preview} | Time: ${session.timestamp}</p>`;
-                        sessionDiv.addEventListener('click', () => loadSessionMessages(session.sessionId));
+                        sessionDiv.addEventListener('click', () => viewSession(session.sessionId));
                         adminBody.appendChild(sessionDiv);
                     });
                 }
-
-                const credentialsBtn = document.createElement('div');
-                credentialsBtn.classList.add('user-credentials');
+                const credentialsBtn = document.createElement('button');
+                credentialsBtn.classList.add('quick-reply-btn');
                 credentialsBtn.textContent = 'View User Credentials';
-                credentialsBtn.addEventListener('click', showUserCredentials);
+                credentialsBtn.addEventListener('click', viewCredentials);
                 adminBody.appendChild(credentialsBtn);
+                logoutBtn.style.display = 'block';
             }
 
-            // Function to load messages from a session
-            function loadSessionMessages(sessionId) {
+            async function viewSession(sessionId) {
                 currentSessionId = sessionId;
                 adminBody.innerHTML = '';
-                adminInputContainer.style.display = 'flex';
-
-                const messages = JSON.parse(localStorage.getItem(`messages_${sessionId}`)) || [];
+                const messagesRef = db.collection('sessions').doc(sessionId).collection('messages');
+                const snapshot = await messagesRef.orderBy('timestamp').get();
+                messages = [];
+                snapshot.forEach(doc => {
+                    messages.push(doc.data());
+                });
                 messages.forEach(msg => {
-                    addMessage(msg.text, msg.isBot);
+                    const messageDiv = document.createElement('div');
+                    messageDiv.classList.add('message', msg.isBot ? 'admin-message' : 'user-message');
+                    messageDiv.textContent = msg.text;
+                    adminBody.appendChild(messageDiv);
                 });
-
-                const backBtn = document.createElement('button');
-                backBtn.classList.add('back-btn');
-                backBtn.textContent = 'Back to Sessions';
-                backBtn.addEventListener('click', showUserSessions);
-                adminBody.insertBefore(backBtn, adminBody.firstChild);
+                adminInputContainer.style.display = 'block';
             }
 
-            // Simulate checking for user activity (polling)
-            let lastMessageCount = 0;
-            function checkUserActivity() {
-                const sessions = JSON.parse(localStorage.getItem('sessions')) || [];
-                let totalMessages = 0;
-                sessions.forEach(session => {
-                    const messages = JSON.parse(localStorage.getItem(`messages_${session.sessionId}`)) || [];
-                    totalMessages += messages.length;
-                    const latestMessage = messages[messages.length - 1];
-                    if (latestMessage && !latestMessage.isBot) {
-                        notifyUserActivity(`New message from ${session.userId} in session ${session.sessionId}: ${latestMessage.text}`);
-                    }
+            async function viewCredentials() {
+                adminBody.innerHTML = '<h3>User Credentials</h3>';
+                const usersRef = db.collection('users');
+                const snapshot = await usersRef.get();
+                snapshot.forEach(doc => {
+                    const user = doc.data();
+                    const credentialDiv = document.createElement('div');
+                    credentialDiv.classList.add('user-credentials');
+                    credentialDiv.innerHTML = `<p>Username: ${user.username} | Password: ${user.password}</p>`;
+                    adminBody.appendChild(credentialDiv);
                 });
-                if (totalMessages > lastMessageCount) {
-                    lastMessageCount = totalMessages;
-                    if (!currentSessionId) {
-                        showUserSessions();
+                adminInputContainer.style.display = 'none';
+            }
+
+            async function sendMessage() {
+                const message = inputArea.value.trim();
+                if (message && currentSessionId) {
+                    const messagesRef = db.collection('sessions').doc(currentSessionId).collection('messages');
+                    await messagesRef.add({
+                        text: message,
+                        isBot: true,
+                        timestamp: new Date().toLocaleTimeString()
+                    });
+                    const messageDiv = document.createElement('div');
+                    messageDiv.classList.add('message', 'admin-message');
+                    messageDiv.textContent = message;
+                    adminBody.appendChild(messageDiv);
+                    adminBody.scrollTop = adminBody.scrollHeight;
+                    inputArea.value = '';
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification('Admin Response', { body: `Admin replied to session ${currentSessionId}: ${message}` });
                     }
                 }
             }
 
-            // Function to logout
-            function logout() {
-                if (confirm('Apakah Anda yakin ingin logout sebagai admin?')) {
-                    localStorage.removeItem('loggedInAdmin');
-                    alert('Logout berhasil!');
-                    window.location.href = './login.html';
-                }
+            function sendQuickReply() {
+                inputArea.value = 'Terima kasih atas pesan Anda. Kami akan segera menanggapi.';
+                sendMessage();
             }
 
-            // Check for activity every 5 seconds
-            setInterval(checkUserActivity, 5000);
+            loadSessions();
 
-            // Initial check for login status
-            if (checkLogin()) {
-                showUserSessions();
+            sendBtn.addEventListener('click', sendMessage);
+            quickReplyBtn.addEventListener('click', sendQuickReply);
+            backBtn.addEventListener('click', () => {
+                currentSessionId = null;
+                adminInputContainer.style.display = 'none';
+                loadSessions();
+            });
+            logoutBtn.addEventListener('click', async () => {
+                await auth.signOut();
+                localStorage.removeItem('loggedInAdmin');
+                window.location.reload();
+            });
+
+            if ('Notification' in window && Notification.permission !== 'granted') {
+                Notification.requestPermission();
             }
         });
     </script>
