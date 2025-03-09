@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GROK 3 - Login</title>
+    <!-- Tambahkan Firebase SDK (Compatibility Mode) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;500&display=swap');
         * {
@@ -14,11 +18,12 @@
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #0f0c29, #1a1a3d);
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             position: relative;
+            overflow: auto;
         }
         .login-container {
             background: rgba(255, 255, 255, 0.1);
@@ -82,9 +87,14 @@
             color: #00ddaa;
         }
         @media (max-width: 480px) {
+            body {
+                align-items: flex-start;
+                padding: 10px;
+            }
             .login-container {
-                width: 95%;
+                width: 100%;
                 padding: 20px;
+                border-radius: 0;
             }
             .login-header {
                 font-size: 20px;
@@ -115,51 +125,63 @@
     </div>
 
     <script>
+        // Inisialisasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAM1C8pqm9ex_pyrc4p9lOP3Hv3eRSxsqU",
+            authDomain: "grok3-kantor.firebaseapp.com",
+            projectId: "grok3-kantor",
+            storageBucket: "grok3-kantor.firebasestorage.app",
+            messagingSenderId: "879928804738",
+            appId: "1:879928804738:web:865a34b69859741c3bbb9b",
+            measurementId: "G-9486SBC87P"
+        };
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
         document.addEventListener('DOMContentLoaded', () => {
             const usernameInput = document.getElementById('username');
             const passwordInput = document.getElementById('password');
             const loginBtn = document.getElementById('login-btn');
             const registerLink = document.getElementById('register-link');
 
-            // Initialize users in localStorage if not exists
-            if (!localStorage.getItem('users')) {
-                localStorage.setItem('users', JSON.stringify([]));
-            }
-
-            loginBtn.addEventListener('click', () => {
+            loginBtn.addEventListener('click', async () => {
                 const username = usernameInput.value.trim();
                 const password = passwordInput.value.trim();
+                const email = `${username}@grok3.com`; // Simulasi email untuk Firebase Auth
 
                 if (username && password) {
-                    const users = JSON.parse(localStorage.getItem('users')) || [];
-                    const userExists = users.find(user => user.username === username && user.password === password);
-
-                    if (userExists) {
+                    try {
+                        await auth.signInWithEmailAndPassword(email, password);
                         localStorage.setItem('currentUser', username);
                         alert('Login berhasil! Selamat datang, ' + username + '!');
                         window.location.href = './index.html';
-                    } else {
+                    } catch (error) {
                         alert('Username atau password salah! Silakan coba lagi atau daftar jika belum memiliki akun.');
+                        console.error('Login error:', error);
                     }
                 } else {
                     alert('Harap masukkan username dan password.');
                 }
             });
 
-            registerLink.addEventListener('click', () => {
+            registerLink.addEventListener('click', async () => {
                 const username = prompt('Masukkan username baru:');
                 const password = prompt('Masukkan password baru:');
+                const email = `${username}@grok3.com`; // Simulasi email untuk Firebase Auth
 
                 if (username && password) {
-                    const users = JSON.parse(localStorage.getItem('users')) || [];
-                    const userExists = users.find(user => user.username === username);
-
-                    if (userExists) {
-                        alert('Username sudah digunakan! Silakan pilih username lain.');
-                    } else {
-                        users.push({ username, password });
-                        localStorage.setItem('users', JSON.stringify(users));
+                    try {
+                        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                        await db.collection('users').doc(username).set({ username, password });
                         alert('Registrasi berhasil! Silakan login dengan akun Anda.');
+                    } catch (error) {
+                        if (error.code === 'auth/email-already-in-use') {
+                            alert('Username sudah digunakan! Silakan pilih username lain.');
+                        } else {
+                            alert('Terjadi kesalahan saat registrasi: ' + error.message);
+                        }
+                        console.error('Registration error:', error);
                     }
                 } else {
                     alert('Harap masukkan username dan password untuk registrasi.');
