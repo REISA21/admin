@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FAJAR LESTARI - Virtual Assistant</title>
+    <title>GROK 3 - Virtual Assistant</title>
+    <!-- Tambahkan Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;500&display=swap');
         * {
@@ -14,8 +18,8 @@
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #0f0c29, #1a1a3d);
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh;
+            overflow: auto;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -343,13 +347,20 @@
             background: #ff6666;
         }
         @media (max-width: 480px) {
+            body {
+                align-items: flex-start;
+                padding: 10px;
+            }
             .chat-container {
-                width: 95%;
-                height: 95vh;
+                width: 100%;
+                height: auto;
+                min-height: 100vh;
                 max-height: none;
+                border-radius: 0;
             }
             .chat-header {
                 font-size: 18px;
+                padding: 10px;
             }
             .menu-btn {
                 padding: 5px 8px;
@@ -363,6 +374,15 @@
                 font-size: 13px;
                 max-width: 85%;
                 padding: 10px 15px;
+            }
+            .chat-body {
+                padding: 10px;
+            }
+            .chat-input-container {
+                padding: 10px;
+                position: sticky;
+                bottom: 0;
+                width: 100%;
             }
             .input-area {
                 font-size: 13px;
@@ -389,6 +409,8 @@
         @media (min-width: 481px) and (max-width: 768px) {
             .chat-container {
                 max-width: 500px;
+                height: auto;
+                min-height: 100vh;
             }
             .chat-header {
                 font-size: 20px;
@@ -445,11 +467,23 @@
     </div>
 
     <script>
-        // Pastikan DOM sudah dimuat sebelum menjalankan script
-        document.addEventListener('DOMContentLoaded', () => {
+        // Inisialisasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAM1C8pqm9ex_pyrc4p9lOP3Hv3eRSxsqU",
+            authDomain: "grok3-kantor.firebaseapp.com",
+            projectId: "grok3-kantor",
+            storageBucket: "grok3-kantor.firebasestorage.app",
+            messagingSenderId: "879928804738",
+            appId: "1:879928804738:web:865a34b69859741c3bbb9b",
+            measurementId: "G-9486SBC87P"
+        };
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        document.addEventListener('DOMContentLoaded', async () => {
             console.log("DOM fully loaded and parsed");
 
-            // Inisialisasi elemen DOM
             const chatBody = document.getElementById('chat-body');
             const inputArea = document.getElementById('input-area');
             const sendBtn = document.getElementById('send-btn');
@@ -465,18 +499,28 @@
             const historyBtn = document.getElementById('history-btn');
             const closeHistoryBtn = document.getElementById('close-history-btn');
 
-            // Pastikan semua elemen ditemukan
             if (!chatBody || !inputArea || !sendBtn || !uploadInput || !filePreview || !fileNameDisplay || !removeFileBtn || !historyOverlay || !historyContent || !menuDropdown || !menuBtn || !accountBtn || !historyBtn || !closeHistoryBtn) {
                 console.error("One or more DOM elements are missing");
                 return;
             }
 
             let selectedFile = null;
-            const currentUser = localStorage.getItem('currentUser');
-            let sessionId = localStorage.getItem(`currentSession_${currentUser}`) || Date.now();
-            let messages = JSON.parse(localStorage.getItem(`messages_${sessionId}`)) || [];
+            let currentUser = localStorage.getItem('currentUser');
+            let sessionId = localStorage.getItem(`currentSession_${currentUser}`) || Date.now().toString();
+            let messages = [];
 
-            // Cek status login
+            // Cek autentikasi user
+            auth.onAuthStateChanged(user => {
+                if (!user) {
+                    window.location.href = './login.html';
+                } else {
+                    currentUser = localStorage.getItem('currentUser');
+                    if (!currentUser) {
+                        window.location.href = './login.html';
+                    }
+                }
+            });
+
             if (!currentUser) {
                 console.log("No user found, showing login message");
                 chatBody.innerHTML = '<h3>Login Required</h3><p>Harap login untuk menggunakan chat.</p>';
@@ -488,6 +532,16 @@
                 return;
             }
             localStorage.setItem(`currentSession_${currentUser}`, sessionId);
+
+            async function loadMessages() {
+                const messagesRef = db.collection('sessions').doc(sessionId).collection('messages');
+                const snapshot = await messagesRef.orderBy('timestamp').get();
+                messages = [];
+                snapshot.forEach(doc => {
+                    messages.push(doc.data());
+                });
+                return messages;
+            }
 
             function toggleMenu() {
                 console.log("Toggle menu clicked");
@@ -528,7 +582,8 @@
                 chatBody.scrollTop = chatBody.scrollHeight;
 
                 messages.push({ text, isBot, fileData, fileName, timestamp: new Date().toLocaleTimeString() });
-                localStorage.setItem(`messages_${sessionId}`, JSON.stringify(messages));
+                const messagesRef = db.collection('sessions').doc(sessionId).collection('messages');
+                messagesRef.add({ text, isBot, fileData, fileName, timestamp: new Date().toLocaleTimeString() });
             }
 
             function botResponse(text, fileData = null, fileName = null) {
@@ -538,30 +593,28 @@
                 }, 800);
             }
 
-            function saveSession() {
+            async function saveSession() {
                 console.log("Saving session");
-                const sessions = JSON.parse(localStorage.getItem('sessions')) || [];
                 const lastUserMessage = messages.findLast(msg => !msg.isBot);
                 if (lastUserMessage) {
-                    const existingSession = sessions.find(s => s.sessionId === sessionId && s.userId === currentUser);
-                    if (existingSession) {
-                        existingSession.timestamp = new Date().toLocaleTimeString();
-                        existingSession.preview = lastUserMessage.text.substring(0, 50) + (lastUserMessage.text.length > 50 ? '...' : '');
-                    } else {
-                        sessions.push({
-                            userId: currentUser,
-                            sessionId: sessionId,
-                            timestamp: new Date().toLocaleTimeString(),
-                            preview: lastUserMessage.text.substring(0, 50) + (lastUserMessage.text.length > 50 ? '...' : '')
-                        });
-                    }
-                    localStorage.setItem('sessions', JSON.stringify(sessions));
+                    const sessionRef = db.collection('sessions').doc(sessionId);
+                    await sessionRef.set({
+                        userId: currentUser,
+                        sessionId: sessionId,
+                        timestamp: new Date().toLocaleTimeString(),
+                        preview: lastUserMessage.text.substring(0, 50) + (lastUserMessage.text.length > 50 ? '...' : '')
+                    }, { merge: true });
                 }
             }
 
-            function loadSession(sessionId) {
+            async function loadSession(sessionId) {
                 console.log("Loading session:", sessionId);
-                const sessionMessages = JSON.parse(localStorage.getItem(`messages_${sessionId}`)) || [];
+                const messagesRef = db.collection('sessions').doc(sessionId).collection('messages');
+                const snapshot = await messagesRef.orderBy('timestamp').get();
+                const sessionMessages = [];
+                snapshot.forEach(doc => {
+                    sessionMessages.push(doc.data());
+                });
                 if (sessionMessages.length > 0) {
                     chatBody.innerHTML = '';
                     sessionMessages.forEach(msg => addMessage(msg.text, msg.isBot, msg.fileData, msg.fileName));
@@ -572,11 +625,15 @@
                 }
             }
 
-            function showHistory() {
+            async function showHistory() {
                 console.log("Showing history");
                 toggleMenu();
-                const sessions = JSON.parse(localStorage.getItem('sessions')) || [];
-                const userSessions = sessions.filter(session => session.userId === currentUser);
+                const sessionsRef = db.collection('sessions').where('userId', '==', currentUser);
+                const snapshot = await sessionsRef.get();
+                const userSessions = [];
+                snapshot.forEach(doc => {
+                    userSessions.push(doc.data());
+                });
                 historyContent.innerHTML = '<h3>History</h3>';
                 if (userSessions.length === 0) {
                     historyContent.innerHTML += '<p>No previous sessions.</p>';
@@ -591,7 +648,6 @@
                 }
                 historyContent.innerHTML += '<button class="close-btn" id="close-history-btn">Close</button>';
                 historyOverlay.style.display = 'flex';
-                // Pasang ulang event listener untuk tombol Close
                 document.getElementById('close-history-btn').addEventListener('click', hideHistory);
             }
 
@@ -607,18 +663,22 @@
                 window.location.href = './account.html';
             }
 
-            // Inisialisasi satu kali
             chatBody.innerHTML = '';
+            messages = await loadMessages();
             if (messages.length === 0) {
                 addMessage("Ada yang bisa saya bantu? Silakan ketik pesan anda dan jangan lupa cantumkan nama ya!", true);
             } else {
                 messages.forEach(msg => addMessage(msg.text, msg.isBot, msg.fileData, msg.fileName));
             }
 
-            // Polling untuk pembaruan
-            function checkForUpdates() {
+            async function checkForUpdates() {
                 console.log("Checking for updates");
-                const currentMessages = JSON.parse(localStorage.getItem(`messages_${sessionId}`)) || [];
+                const messagesRef = db.collection('sessions').doc(sessionId).collection('messages');
+                const snapshot = await messagesRef.orderBy('timestamp').get();
+                const currentMessages = [];
+                snapshot.forEach(doc => {
+                    currentMessages.push(doc.data());
+                });
                 const newMessages = currentMessages.filter(msg => !messages.some(m => m.timestamp === msg.timestamp));
                 if (newMessages.length > 0) {
                     newMessages.forEach(msg => {
@@ -631,7 +691,6 @@
             }
             setInterval(checkForUpdates, 5000);
 
-            // Event listener untuk upload file
             uploadInput.addEventListener('change', (e) => {
                 console.log("File uploaded");
                 const file = e.target.files[0];
@@ -652,7 +711,6 @@
                 }
             });
 
-            // Event listener untuk menghapus file yang diunggah
             removeFileBtn.addEventListener('click', () => {
                 console.log("Removing file");
                 selectedFile = null;
@@ -660,8 +718,7 @@
                 uploadInput.value = '';
             });
 
-            // Fungsi untuk mengirim pesan
-            function sendMessage() {
+            async function sendMessage() {
                 console.log("Send button clicked");
                 const message = inputArea.value.trim();
                 let hasSent = false;
@@ -680,7 +737,7 @@
 
                     if (hasSent) {
                         botResponse(`Message received! Processing ${message ? message : ''}${selectedFile ? ` and file ${selectedFile.name}` : ''}...`);
-                        saveSession();
+                        await saveSession();
                         inputArea.value = '';
                         selectedFile = null;
                         filePreview.style.display = 'none';
@@ -688,10 +745,8 @@
                 }
             }
 
-            // Event listener untuk tombol Send
             sendBtn.addEventListener('click', sendMessage);
 
-            // Event listener untuk tombol Enter
             inputArea.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter' && (inputArea.value.trim() || selectedFile)) {
                     console.log("Enter key pressed");
@@ -699,17 +754,11 @@
                 }
             });
 
-            // Event listener untuk tombol menu
             menuBtn.addEventListener('click', toggleMenu);
-
-            // Event listener untuk tombol Account dan History
             accountBtn.addEventListener('click', goToAccount);
             historyBtn.addEventListener('click', showHistory);
-
-            // Event listener untuk tombol Close di history
             closeHistoryBtn.addEventListener('click', hideHistory);
 
-            // Simpan sesi saat halaman ditutup
             window.onbeforeunload = () => {
                 saveSession();
             };
